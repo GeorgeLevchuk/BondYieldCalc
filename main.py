@@ -1,5 +1,8 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from typing import List, Dict
+
 
 # ---------------------------
 # 1. Текущая доходность (Current Yield)
@@ -7,6 +10,7 @@ from typing import List, Dict
 def current_yield(price: float, coupon: float, payments_per_year: int = 2) -> float:
     annual_coupon = coupon * payments_per_year
     return annual_coupon / price
+
 
 # ---------------------------
 # 2. Доходность к погашению (YTM)
@@ -31,17 +35,20 @@ def ytm(price: float, coupon: float, years: float, nominal: float = 1000, paymen
             break
     return guess
 
+
 # ---------------------------
 # 3. Реальная доходность (для линкеров)
 # ---------------------------
 def real_yield(nominal_ytm: float, inflation: float) -> float:
     return nominal_ytm - inflation
 
+
 # ---------------------------
 # 4. Флоатеры: купон как ставка + спред
 # ---------------------------
 def floater_coupon(base_rate: float, spread: float) -> float:
     return base_rate + spread
+
 
 # ---------------------------
 # 5. Сравнение нескольких облигаций
@@ -55,8 +62,8 @@ def analyze_bonds(bonds: List[Dict], inflation: float = 0.06, base_rate: float =
             results.append({
                 "name": b["name"],
                 "type": "Fixed",
-                "Current Yield": f"{cy*100:.2f}%",
-                "YTM": f"{yt*100:.2f}%"
+                "Current Yield": f"{cy * 100:.2f}%",
+                "YTM": f"{yt * 100:.2f}%"
             })
 
         elif b["type"] == "linker":
@@ -65,8 +72,8 @@ def analyze_bonds(bonds: List[Dict], inflation: float = 0.06, base_rate: float =
             results.append({
                 "name": b["name"],
                 "type": "Linker",
-                "YTM": f"{yt*100:.2f}%",
-                "Real Yield": f"{ry*100:.2f}%"
+                "YTM": f"{yt * 100:.2f}%",
+                "Real Yield": f"{ry * 100:.2f}%"
             })
 
         elif b["type"] == "floater":
@@ -74,7 +81,7 @@ def analyze_bonds(bonds: List[Dict], inflation: float = 0.06, base_rate: float =
             results.append({
                 "name": b["name"],
                 "type": "Floater",
-                "Coupon Now": f"{fc*100:.2f}%"
+                "Coupon Now": f"{fc * 100:.2f}%"
             })
     return results
 
@@ -90,5 +97,41 @@ if __name__ == "__main__":
     ]
 
     report = analyze_bonds(bonds, inflation=0.06, base_rate=0.15)
+
+    # Красивый вывод в консоль
     for r in report:
         print(r)
+
+    # Вывод в виде таблицы через pandas
+    df = pd.DataFrame(report)
+    print("\nТабличный вывод:")
+    print(df)
+
+    # ---------------------------
+    # Визуализация доходностей
+    # ---------------------------
+    # 1. График YTM
+    plt.figure(figsize=(8, 5))
+    if 'YTM' in df:
+        plt.bar(df['name'], df['YTM'].str.rstrip('%').astype(float), color='skyblue')
+        plt.ylabel('Доходность к погашению (YTM), %')
+        plt.title('Доходности облигаций')
+        plt.show()
+
+    # 2. Сравнение CY, YTM, Real Yield
+    df_plot = df.copy()
+    for col in ['Current Yield', 'YTM', 'Real Yield']:
+        if col in df_plot:
+            df_plot[col] = df_plot[col].str.rstrip('%').astype(float)
+
+    df_melt = df_plot.melt(id_vars=['name'], value_vars=['Current Yield', 'YTM', 'Real Yield'], var_name='Показатель',
+                           value_name='Значение').dropna()
+
+    plt.figure(figsize=(10, 6))
+    for label, subset in df_melt.groupby('Показатель'):
+        plt.bar(subset['name'], subset['Значение'], label=label, alpha=0.7)
+
+    plt.ylabel('Доходность, %')
+    plt.title('Сравнение доходностей облигаций')
+    plt.legend()
+    plt.show()
